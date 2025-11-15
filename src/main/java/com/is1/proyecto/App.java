@@ -92,6 +92,26 @@ public class App {
             return new ModelAndView(model, "user_form.mustache");
         }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
 
+        get("/teacher/create", (req, res) -> {
+            Map<String, Object> model = new HashMap<>(); // Crea un mapa para pasar datos a la plantilla.
+
+            // Obtener y añadir mensaje de éxito de los query parameters (ej. ?message=Cuenta creada!)
+            String successMessage = req.queryParams("message");
+            if (successMessage != null && !successMessage.isEmpty()) {
+                model.put("successMessage", successMessage);
+            }
+
+            // Obtener y añadir mensaje de error de los query parameters (ej. ?error=Campos vacíos)
+            String errorMessage = req.queryParams("error");
+            if (errorMessage != null && !errorMessage.isEmpty()) {
+                model.put("errorMessage", errorMessage);
+            }
+
+            // Renderiza la plantilla 'user_form.mustache' con los datos del modelo.
+            return new ModelAndView(model, "teacher_form.mustache");
+        }, new MustacheTemplateEngine()); // Especifica el motor de plantillas para esta ruta.
+
+        
         // GET: Ruta para mostrar el dashboard (panel de control) del usuario.
         // Requiere que el usuario esté autenticado.
         get("/dashboard", (req, res) -> {
@@ -197,6 +217,62 @@ public class App {
             }
         });
 
+        post("/teacher/new", (req, res) -> {
+           String firstname = req.queryParams("firstname");
+           String lastname = req.queryParams("lastname");
+           Integer dni = Integer.parseInt(req.queryParams("dni"));
+           String email = req.queryParams("email");
+           String degree = req.queryParams("title");
+          
+          
+           // Validaciones básicas: campos no pueden ser nulos o vacíos.
+            if (firstname == null || firstname.isEmpty()
+                || lastname == null || lastname.isEmpty() || email == null || email.isEmpty()
+                || dni <= 0   || degree == null || degree.isEmpty() // TODO: agregar campo degree en formulario
+            ) {
+               res.status(400); // Código de estado HTTP 400 (Bad Request).
+               // Redirige al formulario de creación con un mensaje de error.
+               System.out.println(firstname.isEmpty() + "," +lastname.isEmpty()+","+email.isEmpty());
+               res.redirect("/teacher/create?error=Todos los campos son requeridos.");
+               return ""; // Retorna una cadena vacía ya que la respuesta ya fue redirigida.
+           }
+           try {
+               //Chequear si existe una persona con el mismo DNI o gmail. Si no, crearla.
+               //Chequear si esa persona ya está registrada como profesor.
+               //Si es así, denegar la solicitud. Sino, registrarla como profesor.
+
+
+               // Intenta crear y guardar la nueva cuenta en la base de datos.
+              
+               //Person per = new Person();
+               Teacher ac = new Teacher(); // Crea una nueva instancia del modelo User.
+
+
+               ac.set("first_name", firstname); // Asigna el nombre de usuario.
+               ac.set("last_name", lastname);
+               ac.set("dni", dni);
+               ac.set("degree", degree);
+               ac.set("email", email);
+              
+               ac.saveIt(); // Guarda el nuevo usuario en la tabla 'users'.
+
+
+               res.status(201); // Código de estado HTTP 201 (Created) para una creación exitosa.
+               // Redirige al formulario de creación con un mensaje de éxito.
+               res.redirect("/teacher/create?message=Profesor " + firstname + " registrado exitosamente!");
+               return ""; // Retorna una cadena vacía.
+
+
+           } catch (Exception e) {
+               // Si ocurre cualquier error durante la operación de DB (ej. nombre de usuario duplicado),
+               // se captura aquí y se redirige con un mensaje de error.
+               System.err.println("Error al registrar el profesor: " + e.getMessage());
+               e.printStackTrace(); // Imprime el stack trace para depuración.
+               res.status(500); // Código de estado HTTP 500 (Internal Server Error).
+               res.redirect("/teacher/create?error=Error interno al crear el profesor. Intente de nuevo.");
+               return ""; // Retorna una cadena vacía. // Retorna una cadena vacía.
+           }
+       });
 
         // POST: Maneja el envío del formulario de inicio de sesión.
         post("/login", (req, res) -> {
